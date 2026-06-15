@@ -1,0 +1,11 @@
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.exe
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
