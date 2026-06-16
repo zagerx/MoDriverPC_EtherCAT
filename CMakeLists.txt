@@ -17,6 +17,8 @@ set(ECAT_SOURCES
     src/ec_master/ec_master.cpp
     src/ec_controller/ec_controller.cpp
     src/cyclic/cyclic_runner.cpp
+    src/servo_axis/servo_axis.cpp
+    src/servo_axis/joint_manager.cpp
     src/utils/logger.cpp
 )
 

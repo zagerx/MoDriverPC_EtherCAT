@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ec_master/ec_master.h"
+#include "servo_axis/joint_manager.h"
 
 namespace mo_ecat
 {
@@ -26,11 +27,15 @@ public:
 	// 状态监控：由 main 创建的状态监控线程调用
 	void CheckSlaveStates();
 
+	// 获取关节管理器，供上层按名字/索引访问从站
+	JointManager &GetJointManager();
+
 	bool IsInitialized() const;
 	bool IsOperational() const;
 
 private:
 	EcMaster master_;
+	JointManager joint_manager_;
 	bool initialized_ = false;
 	bool operational_ = false;
 };
