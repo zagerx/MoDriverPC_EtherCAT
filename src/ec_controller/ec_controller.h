@@ -20,10 +20,14 @@ public:
 	// 安全停止：进入 SAFE_OP + 进入 INIT
 	void Stop();
 
+	// 周期任务：由 main 创建的 PDO 线程调用
+	void RunOneCycle();
+
+	// 状态监控：由 main 创建的状态监控线程调用
+	void CheckSlaveStates();
+
 	bool IsInitialized() const;
 	bool IsOperational() const;
-
-	EcMaster &GetMaster();
 
 private:
 	EcMaster master_;

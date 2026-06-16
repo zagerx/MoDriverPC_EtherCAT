@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <mutex>
 #include <string>
 
 #include "soem/soem.h"
@@ -59,6 +60,9 @@ class EcMaster
 
 	int expected_wkc_ = 0;
 	CyclicStats stats_;
+
+	// 保护 SOEM 上下文，防止多线程同时访问
+	std::mutex soem_mutex_;
 };
 
 } // namespace mo_ecat

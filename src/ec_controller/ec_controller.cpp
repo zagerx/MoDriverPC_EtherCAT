@@ -72,6 +72,16 @@ void EcatController::Stop()
 	initialized_ = false;
 }
 
+void EcatController::RunOneCycle()
+{
+	master_.RunOneCycle();
+}
+
+void EcatController::CheckSlaveStates()
+{
+	master_.CheckSlaveStates();
+}
+
 bool EcatController::IsInitialized() const
 {
 	return initialized_;
@@ -80,11 +90,6 @@ bool EcatController::IsInitialized() const
 bool EcatController::IsOperational() const
 {
 	return operational_;
-}
-
-EcMaster &EcatController::GetMaster()
-{
-	return master_;
 }
 
 } // namespace mo_ecat

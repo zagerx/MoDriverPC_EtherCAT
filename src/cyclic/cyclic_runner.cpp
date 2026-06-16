@@ -1,6 +1,11 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "cyclic/cyclic_runner.h"
 
 #include <iostream>
+#include <pthread.h>
+#include <sched.h>
 
 namespace mo_ecat
 {
@@ -25,6 +30,7 @@ bool CyclicRunner::Start(Task task)
     task_ = std::move(task);
     running_ = true;
     thread_ = std::thread(&CyclicRunner::RunLoop, this);
+    ApplyThreadSettings();
     return true;
 }
 
@@ -60,6 +66,38 @@ void CyclicRunner::RunLoop()
         // 基于绝对时间点睡眠，减少周期漂移。
         next_time += interval;
         std::this_thread::sleep_until(next_time);
+    }
+}
+
+void CyclicRunner::SetRealtimePriority(int priority)
+{
+    realtime_priority_ = priority;
+}
+
+void CyclicRunner::SetCpuAffinity(int cpu_id)
+{
+    cpu_affinity_ = cpu_id;
+}
+
+void CyclicRunner::ApplyThreadSettings()
+{
+    if (realtime_priority_ >= 0) {
+        sched_param param{};
+        param.sched_priority = realtime_priority_;
+        int ret = pthread_setschedparam(thread_.native_handle(), SCHED_FIFO, &param);
+        if (ret != 0) {
+            std::cerr << "CyclicRunner: failed to set realtime priority (errno=" << ret << ")\n";
+        }
+    }
+
+    if (cpu_affinity_ >= 0) {
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CPU_SET(cpu_affinity_, &cpuset);
+        int ret = pthread_setaffinity_np(thread_.native_handle(), sizeof(cpuset), &cpuset);
+        if (ret != 0) {
+            std::cerr << "CyclicRunner: failed to set CPU affinity (errno=" << ret << ")\n";
+        }
     }
 }
 

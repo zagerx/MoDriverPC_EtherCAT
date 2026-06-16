@@ -87,6 +87,8 @@ bool EcMaster::RequestInitState()
 
 void EcMaster::RunOneCycle()
 {
+	std::lock_guard<std::mutex> lock(soem_mutex_);
+
 	ecx_send_processdata(&ctx_);
 	int wkc = ecx_receive_processdata(&ctx_, EC_TIMEOUTRET);
 
@@ -99,6 +101,7 @@ void EcMaster::RunOneCycle()
 
 void EcMaster::CheckSlaveStates()
 {
+	std::lock_guard<std::mutex> lock(soem_mutex_);
 	ecx_readstate(&ctx_);
 }
 

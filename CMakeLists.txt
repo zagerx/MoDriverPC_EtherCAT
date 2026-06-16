@@ -17,7 +17,6 @@ set(ECAT_SOURCES
     src/ec_master/ec_master.cpp
     src/ec_controller/ec_controller.cpp
     src/cyclic/cyclic_runner.cpp
-    src/utils/signal_handler.cpp
 )
 
 add_executable(ecat_scan src/main.cpp ${ECAT_SOURCES})

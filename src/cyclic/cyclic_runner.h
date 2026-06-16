@@ -25,10 +25,19 @@ public:
 
     bool IsRunning() const;
 
+    // 设置实时优先级（SCHED_FIFO），需要在 Start() 前调用。
+    void SetRealtimePriority(int priority);
+
+    // 设置 CPU 亲和性，需要在 Start() 前调用。
+    void SetCpuAffinity(int cpu_id);
+
 private:
     void RunLoop();
+    void ApplyThreadSettings();
 
     int cycle_time_us_;
+    int realtime_priority_ = -1;
+    int cpu_affinity_ = -1;
     std::atomic<bool> running_{false};
     std::thread thread_;
     Task task_;
