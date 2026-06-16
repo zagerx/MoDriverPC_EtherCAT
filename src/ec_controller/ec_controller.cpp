@@ -1,6 +1,6 @@
 #include "ec_controller/ec_controller.h"
 
-#include <iostream>
+#include "utils/logger.h"
 
 namespace mo_ecat
 {
@@ -17,7 +17,7 @@ EcatController::~EcatController()
 bool EcatController::Initialize(const EcMasterConfig &config)
 {
 	if (initialized_) {
-		std::cerr << "EcatController already initialized\n";
+		LOG_WARN << "EcatController already initialized";
 		return false;
 	}
 
@@ -30,7 +30,7 @@ bool EcatController::Initialize(const EcMasterConfig &config)
 	}
 
 	if (!master_.RequestSafeOpState()) {
-		std::cerr << "Failed to enter SAFE_OP\n";
+		LOG_ERROR << "Failed to enter SAFE_OP";
 		return false;
 	}
 
@@ -41,22 +41,22 @@ bool EcatController::Initialize(const EcMasterConfig &config)
 bool EcatController::StartOperation()
 {
 	if (!initialized_) {
-		std::cerr << "EcatController not initialized, call Initialize() first\n";
+		LOG_WARN << "EcatController not initialized, call Initialize() first";
 		return false;
 	}
 
 	if (operational_) {
-		std::cerr << "EcatController already operational\n";
+		LOG_WARN << "EcatController already operational";
 		return false;
 	}
 
 	if (!master_.RequestOperationalState()) {
-		std::cerr << "Failed to enter OPERATIONAL\n";
+		LOG_ERROR << "Failed to enter OPERATIONAL";
 		return false;
 	}
 
 	operational_ = true;
-	std::cout << "EcatController operational\n";
+	LOG_INFO << "EcatController operational";
 	return true;
 }
 

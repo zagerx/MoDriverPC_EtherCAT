@@ -6,6 +6,7 @@
 
 #include "cyclic/cyclic_runner.h"
 #include "ec_controller/ec_controller.h"
+#include "utils/logger.h"
 
 namespace
 {
@@ -37,8 +38,12 @@ void WaitForShutdown()
 int main(int argc, char *argv[])
 {
 	if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " <interface>\n";
+		LOG_ERROR << "Usage: " << argv[0] << " <interface> [log_file]";
 		return 1;
+	}
+
+	if (argc >= 3) {
+		mo_ecat::Logger::GetInstance().SetLogFile(argv[2]);
 	}
 
 	mo_ecat::EcMasterConfig config;
@@ -80,7 +85,7 @@ int main(int argc, char *argv[])
 	// 5. 注册退出信号
 	RegisterShutdownSignals();
 
-	std::cout << "System running on " << config.ifname << ". Press Ctrl+C to stop.\n";
+	LOG_INFO << "System running on " << config.ifname << ". Press Ctrl+C to stop.";
 
 	// 6. 主线程阻塞等待退出信号
 	WaitForShutdown();

@@ -3,9 +3,10 @@
 #endif
 #include "cyclic/cyclic_runner.h"
 
-#include <iostream>
 #include <pthread.h>
 #include <sched.h>
+
+#include "utils/logger.h"
 
 namespace mo_ecat
 {
@@ -23,7 +24,7 @@ CyclicRunner::~CyclicRunner()
 bool CyclicRunner::Start(Task task)
 {
     if (running_) {
-        std::cerr << "CyclicRunner already running\n";
+        LOG_WARN << "CyclicRunner already running";
         return false;
     }
 
@@ -86,7 +87,7 @@ void CyclicRunner::ApplyThreadSettings()
         param.sched_priority = realtime_priority_;
         int ret = pthread_setschedparam(thread_.native_handle(), SCHED_FIFO, &param);
         if (ret != 0) {
-            std::cerr << "CyclicRunner: failed to set realtime priority (errno=" << ret << ")\n";
+            LOG_WARN << "CyclicRunner: failed to set realtime priority (errno=" << ret << ")";
         }
     }
 
@@ -96,7 +97,7 @@ void CyclicRunner::ApplyThreadSettings()
         CPU_SET(cpu_affinity_, &cpuset);
         int ret = pthread_setaffinity_np(thread_.native_handle(), sizeof(cpuset), &cpuset);
         if (ret != 0) {
-            std::cerr << "CyclicRunner: failed to set CPU affinity (errno=" << ret << ")\n";
+            LOG_WARN << "CyclicRunner: failed to set CPU affinity (errno=" << ret << ")";
         }
     }
 }

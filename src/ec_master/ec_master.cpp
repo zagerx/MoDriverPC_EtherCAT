@@ -1,6 +1,8 @@
 #include "ec_master/ec_master.h"
-#include <iostream>
+
 #include <cstring>
+
+#include "utils/logger.h"
 
 namespace mo_ecat
 {
@@ -21,24 +23,24 @@ bool EcMaster::Initialize(const EcMasterConfig &config)
 	config_ = config;
 
 	if (!ecx_init(&ctx_, config_.ifname.c_str())) {
-		std::cerr << "ecx_init failed on " << config_.ifname << " (try sudo)\n";
+		LOG_ERROR << "ecx_init failed on " << config_.ifname << " (try sudo)";
 		return false;
 	}
-	std::cout << "SOEM initialized on " << config_.ifname << "\n";
+	LOG_INFO << "SOEM initialized on " << config_.ifname;
 	return true;
 }
 
 void EcMaster::Close()
 {
 	ecx_close(&ctx_);
-	std::cout << "SOEM closed.\n";
+	LOG_INFO << "SOEM closed";
 }
 
 bool EcMaster::ScanAndConfigure()
 {
 	int slave_count = ecx_config_init(&ctx_);
 	if (slave_count <= 0) {
-		std::cerr << "No slaves found\n";
+		LOG_ERROR << "No slaves found";
 		return false;
 	}
 
@@ -49,10 +51,10 @@ bool EcMaster::ScanAndConfigure()
 		ecx_configdc(&ctx_);
 	}
 
-	std::cout << slave_count << " slave(s) found and configured.\n";
-	std::cout << "Outputs: " << ctx_.grouplist[0].Obytes
-		  << " bytes, Inputs: " << ctx_.grouplist[0].Ibytes
-		  << " bytes, Expected WKC: " << expected_wkc_ << "\n";
+	LOG_INFO << slave_count << " slave(s) found and configured";
+	LOG_INFO << "Outputs: " << ctx_.grouplist[0].Obytes
+		 << " bytes, Inputs: " << ctx_.grouplist[0].Ibytes
+		 << " bytes, Expected WKC: " << expected_wkc_;
 	return true;
 }
 
