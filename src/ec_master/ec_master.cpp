@@ -63,6 +63,27 @@ int EcMaster::GetSlaveCount() const
 	return ctx_.slavecount;
 }
 
+SlaveInfo EcMaster::GetSlaveInfo(int slave_id) const
+{
+	SlaveInfo info;
+	if (slave_id <= 0 || slave_id > ctx_.slavecount) {
+		LOG_ERROR << "Invalid slave_id " << slave_id << " for GetSlaveInfo";
+		return info;
+	}
+
+	const auto &slave = ctx_.slavelist[slave_id];
+	info.slave_id = slave_id;
+	info.config_address = slave.configadr;
+	info.alias_address = slave.aliasadr;
+	info.vendor_id = slave.eep_man;
+	info.product_id = slave.eep_id;
+	info.revision_id = slave.eep_rev;
+	info.serial_id = slave.eep_ser;
+	info.name = slave.name;
+	info.supports_dc = slave.hasdc != 0;
+	return info;
+}
+
 bool EcMaster::RequestOperationalState()
 {
 	return RequestState(0, EC_STATE_OPERATIONAL);

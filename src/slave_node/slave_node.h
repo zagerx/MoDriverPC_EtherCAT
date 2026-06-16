@@ -32,6 +32,8 @@ struct SlaveConfig {
 	ServoAxis::Config axis_config;
 };
 
+// 从站信息由 EcMaster 扫描后提供，SlaveNode 创建时缓存一份
+
 // 生成一组默认 PDO 映射（不含 CiA402 控制字/状态字，仅位置/速度/力矩数据）
 SlaveConfig MakeDefaultSlaveConfig(int slave_id);
 
@@ -39,7 +41,7 @@ SlaveConfig MakeDefaultSlaveConfig(int slave_id);
 class SlaveNode
 {
       public:
-	SlaveNode(EcMaster &master, const SlaveConfig &config);
+	SlaveNode(EcMaster &master, const SlaveConfig &config, const SlaveInfo &info);
 
 	// ---------- EtherCAT 通信状态 ----------
 	bool RequestState(uint16_t state);
@@ -61,6 +63,7 @@ class SlaveNode
 
 	ServoAxis &GetAxis();
 	const SlaveConfig &GetConfig() const;
+	const SlaveInfo &GetInfo() const;
 
       private:
 	static const PdoEntry *FindEntry(const std::vector<PdoEntry> &entries,
@@ -89,6 +92,7 @@ class SlaveNode
 
 	EcMaster &master_;
 	SlaveConfig config_;
+	SlaveInfo info_;
 
 	std::vector<uint8_t> output_buffer_;
 	std::vector<uint8_t> input_buffer_;

@@ -7,7 +7,14 @@ bool SlaveNodeManager::Initialize(EcMaster &master, int slave_count)
 {
 	Clear();
 	for (int i = 1; i <= slave_count; ++i) {
-		nodes_.emplace_back(std::make_unique<SlaveNode>(master, MakeDefaultSlaveConfig(i)));
+		SlaveConfig config = MakeDefaultSlaveConfig(i);
+		SlaveInfo info = master.GetSlaveInfo(i);
+		// 用扫描到的从站名称覆盖默认配置名
+		if (!info.name.empty()) {
+			config.name = info.name;
+			config.axis_config.name = info.name;
+		}
+		nodes_.emplace_back(std::make_unique<SlaveNode>(master, config, info));
 	}
 	return true;
 }

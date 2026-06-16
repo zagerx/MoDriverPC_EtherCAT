@@ -45,8 +45,8 @@ SlaveConfig MakeDefaultSlaveConfig(int slave_id)
 	return cfg;
 }
 
-SlaveNode::SlaveNode(EcMaster &master, const SlaveConfig &config)
-	: master_(master), config_(config), axis_(config.axis_config)
+SlaveNode::SlaveNode(EcMaster &master, const SlaveConfig &config, const SlaveInfo &info)
+	: master_(master), config_(config), info_(info), axis_(config.axis_config)
 {
 	output_buffer_.resize(ComputeBufferSize(config_.pdo_mapping.outputs), 0);
 	input_buffer_.resize(ComputeBufferSize(config_.pdo_mapping.inputs), 0);
@@ -60,6 +60,11 @@ const SlaveConfig &SlaveNode::GetConfig() const
 ServoAxis &SlaveNode::GetAxis()
 {
 	return axis_;
+}
+
+const SlaveInfo &SlaveNode::GetInfo() const
+{
+	return info_;
 }
 
 const PdoEntry *SlaveNode::FindEntry(const std::vector<PdoEntry> &entries, const std::string &name)

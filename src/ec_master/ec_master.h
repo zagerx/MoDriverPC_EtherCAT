@@ -20,6 +20,21 @@ struct CyclicStats {
 	int64_t last_dc_time = 0;
 };
 
+// 从站静态信息（由 ecx_config_init 扫描后填充）
+struct SlaveInfo {
+	int slave_id = 0;
+	uint16_t config_address = 0;
+	uint16_t alias_address = 0;
+
+	uint32_t vendor_id = 0;
+	uint32_t product_id = 0;
+	uint32_t revision_id = 0;
+	uint32_t serial_id = 0;
+
+	std::string name;
+	bool supports_dc = false;
+};
+
 class EcMaster
 {
       public:
@@ -31,6 +46,7 @@ class EcMaster
 
 	bool ScanAndConfigure();
 	int GetSlaveCount() const;
+	SlaveInfo GetSlaveInfo(int slave_id) const;
 
 	// 全局状态切换（广播到所有从站）
 	bool RequestOperationalState();
