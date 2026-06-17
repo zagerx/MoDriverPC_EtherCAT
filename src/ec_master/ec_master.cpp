@@ -36,25 +36,44 @@ void EcMaster::Close()
 	LOG_INFO << "SOEM closed";
 }
 
-bool EcMaster::ScanAndConfigure()
+std::vector<SlaveInfo> EcMaster::ScanSlaves()
 {
+	std::vector<SlaveInfo> infos;
+
 	int slave_count = ecx_config_init(&ctx_);
 	if (slave_count <= 0) {
 		LOG_ERROR << "No slaves found";
-		return false;
+		return infos;
 	}
 
+	infos.reserve(slave_count);
+	for (int i = 1; i <= slave_count; ++i) {
+		infos.push_back(GetSlaveInfo(i));
+	}
+
+	LOG_INFO << slave_count << " slave(s) found";
+	return infos;
+}
+
+bool EcMaster::ConfigureProcessData()
+{
 	ecx_config_map_group(&ctx_, iomap_, 0);
 	expected_wkc_ = (ctx_.grouplist[0].outputsWKC * 2) + ctx_.grouplist[0].inputsWKC;
 
-	if (config_.use_dc) {
-		ecx_configdc(&ctx_);
-	}
-
-	LOG_INFO << slave_count << " slave(s) found and configured";
 	LOG_INFO << "Outputs: " << ctx_.grouplist[0].Obytes
 		 << " bytes, Inputs: " << ctx_.grouplist[0].Ibytes
 		 << " bytes, Expected WKC: " << expected_wkc_;
+	return true;
+}
+
+bool EcMaster::ConfigureDc()
+{
+	if (!config_.use_dc) {
+		return true;
+	}
+
+	ecx_configdc(&ctx_);
+	LOG_INFO << "Distributed Clock configured";
 	return true;
 }
 

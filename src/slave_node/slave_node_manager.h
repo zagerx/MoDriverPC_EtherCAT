@@ -14,7 +14,7 @@ namespace mo_ecat
 class SlaveNodeManager
 {
       public:
-	bool Initialize(EcMaster &master, int slave_count);
+	bool Initialize(EcMaster &master, const std::vector<SlaveInfo> &slave_infos);
 
 	size_t GetNodeCount() const;
 	SlaveNode *GetNode(size_t index);

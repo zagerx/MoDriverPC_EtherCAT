@@ -25,7 +25,17 @@ bool EcatController::Initialize(const EcMasterConfig &config)
 		return false;
 	}
 
-	if (!master_.ScanAndConfigure()) {
+	auto slave_infos = master_.ScanSlaves();
+	if (slave_infos.empty()) {
+		return false;
+	}
+
+	// 后续 PDO 映射可能通过 SDO 按从站配置，当前先使用默认映射
+	if (!master_.ConfigureProcessData()) {
+		return false;
+	}
+
+	if (!master_.ConfigureDc()) {
 		return false;
 	}
 
@@ -34,8 +44,7 @@ bool EcatController::Initialize(const EcMasterConfig &config)
 		return false;
 	}
 
-	const int slave_count = master_.GetSlaveCount();
-	node_manager_.Initialize(master_, slave_count);
+	node_manager_.Initialize(master_, slave_infos);
 	LOG_INFO << "Created " << node_manager_.GetNodeCount() << " servo node(s)";
 
 	initialized_ = true;

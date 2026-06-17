@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "soem/soem.h"
 
@@ -44,7 +45,15 @@ class EcMaster
 	bool Initialize(const EcMasterConfig &config);
 	void Close();
 
-	bool ScanAndConfigure();
+	// 扫描从站，填充 ctx_.slavelist，返回所有从站的静态信息
+	std::vector<SlaveInfo> ScanSlaves();
+
+	// 配置 PDO 映射和 IOmap
+	bool ConfigureProcessData();
+
+	// 配置 Distributed Clock
+	bool ConfigureDc();
+
 	int GetSlaveCount() const;
 	SlaveInfo GetSlaveInfo(int slave_id) const;
 

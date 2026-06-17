@@ -3,12 +3,11 @@
 namespace mo_ecat
 {
 
-bool SlaveNodeManager::Initialize(EcMaster &master, int slave_count)
+bool SlaveNodeManager::Initialize(EcMaster &master, const std::vector<SlaveInfo> &slave_infos)
 {
 	Clear();
-	for (int i = 1; i <= slave_count; ++i) {
-		SlaveConfig config = MakeDefaultSlaveConfig(i);
-		SlaveInfo info = master.GetSlaveInfo(i);
+	for (const auto &info : slave_infos) {
+		SlaveConfig config = MakeDefaultSlaveConfig(info.slave_id);
 		// 用扫描到的从站名称覆盖默认配置名
 		if (!info.name.empty()) {
 			config.name = info.name;
