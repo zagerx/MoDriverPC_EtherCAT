@@ -11,6 +11,7 @@ EcMaster::EcMaster()
 {
 	std::memset(&ctx_, 0, sizeof(ctx_));
 	std::memset(iomap_, 0, sizeof(iomap_));
+	closed_ = false;
 }
 
 EcMaster::~EcMaster()
@@ -32,6 +33,11 @@ bool EcMaster::Initialize(const EcMasterConfig &config)
 
 void EcMaster::Close()
 {
+	std::lock_guard<std::mutex> lock(soem_mutex_);
+	if (closed_) {
+		return;
+	}
+	closed_ = true;
 	ecx_close(&ctx_);
 	LOG_INFO << "SOEM closed";
 }

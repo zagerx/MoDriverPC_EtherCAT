@@ -113,6 +113,9 @@ class EcMaster
 
 	// 保护 SOEM 上下文，防止多线程同时访问
 	mutable std::mutex soem_mutex_;
+
+	// 防止 Close() 被重复调用导致 double free
+	bool closed_ = true;
 };
 
 } // namespace mo_ecat
