@@ -82,6 +82,7 @@ class EcMaster
 
 	// 单站状态切换
 	bool RequestState(int slave, uint16_t state);
+	bool RequestBootstrapState(int slave);
 	uint16_t GetCurrentState(int slave) const;
 
 	// 单步运行：执行一次 PDO 收发

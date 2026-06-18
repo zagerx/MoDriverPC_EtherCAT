@@ -115,6 +115,12 @@ uint16_t SlaveNode::GetCurrentState() const
 	return master_.GetCurrentState(info_.slave_id);
 }
 
+uint16_t SlaveNode::RefreshActualState()
+{
+	current_state_ = master_.ReadActualState(info_.slave_id);
+	return current_state_;
+}
+
 bool SlaveNode::SdoRead(uint16_t index, uint8_t subindex, void *data, size_t len, int timeout_us)
 {
 	return master_.SdoRead(static_cast<uint16_t>(info_.slave_id), index, subindex, data,

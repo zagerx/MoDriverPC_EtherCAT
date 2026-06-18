@@ -154,6 +154,12 @@ bool EcMaster::RequestState(int slave, uint16_t state)
 	ecx_statecheck(&ctx_, slave, state, EC_TIMEOUTSTATE);
 	return ctx_.slavelist[slave].state == state;
 }
+
+bool EcMaster::RequestBootstrapState(int slave)
+{
+	return RequestStateWithRetry(slave, EC_STATE_BOOT);
+}
+
 bool EcMaster::RequestPreOpState()
 {
 	return RequestStateWithRetry(0, EC_STATE_PRE_OP);
