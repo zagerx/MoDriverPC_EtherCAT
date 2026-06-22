@@ -1,13 +1,7 @@
 #include "app/ecat_application.h"
 
-#include <poll.h>
-#include <unistd.h>
-
-#include <cerrno>
-#include <cstring>
 #include <functional>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
 
 #include "activity/sdo_diagnostics_activity.h"
@@ -20,7 +14,8 @@
 namespace mo_ecat
 {
 
-EcatApplication::EcatApplication()
+EcatApplication::EcatApplication(std::unique_ptr<CommandReader> command_reader)
+	: command_reader_(std::move(command_reader))
 {
 }
 
@@ -51,41 +46,20 @@ void EcatApplication::RequestShutdown()
 	shutdown_requested_.store(true);
 }
 
-bool EcatApplication::ReadCommand(std::string &command, int timeout_ms)
-{
-	struct pollfd pfd {};
-	pfd.fd = STDIN_FILENO;
-	pfd.events = POLLIN;
-
-	int ret = poll(&pfd, 1, timeout_ms);
-	if (ret < 0) {
-		if (errno == EINTR) {
-			return false;
-		}
-		LOG_ERROR << "poll stdin failed: " << std::strerror(errno);
-		return false;
-	}
-
-	if (ret == 0) {
-		return false;
-	}
-
-	if (!std::getline(std::cin, command)) {
-		// EOF / Ctrl+D
-		RequestShutdown();
-		return false;
-	}
-
-	return true;
-}
-
 void EcatApplication::Run()
 {
 	LOG_INFO << "Main state machine started. Type 'help' for commands, 'exit' to quit.";
 
 	while (!shutdown_requested_.load()) {
 		std::string command;
-		const bool has_command = ReadCommand(command, 100);
+		const ReadResult result = command_reader_->Read(command, 100);
+
+		if (result == ReadResult::kEof) {
+			RequestShutdown();
+			break;
+		}
+
+		const bool has_command = (result == ReadResult::kOk);
 
 		if (has_command && (command == "exit" || command == "quit")) {
 			RequestShutdown();

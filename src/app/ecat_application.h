@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "app/command_reader.h"
 #include "ec_controller/ec_controller.h"
 
 namespace mo_ecat
@@ -16,7 +17,7 @@ namespace mo_ecat
 class EcatApplication
 {
 public:
-	EcatApplication();
+	explicit EcatApplication(std::unique_ptr<CommandReader> command_reader);
 	~EcatApplication();
 
 	// 初始化网卡/SOEM，到达 AdapterReady
@@ -32,9 +33,6 @@ public:
 	void RequestShutdown();
 
 private:
-	// 从 stdin 读取一条命令，超时返回 false
-	bool ReadCommand(std::string &command, int timeout_ms);
-
 	void HandleAdapterReadyState(const std::string *command);
 	void HandleScannedState(const std::string *command);
 	void HandleMaintenanceState(const std::string *command);
@@ -50,6 +48,7 @@ private:
 		const std::function<std::unique_ptr<EcatActivity>(SlaveNode &)> &factory);
 
 	EcatController controller_;
+	std::unique_ptr<CommandReader> command_reader_;
 	std::atomic<bool> shutdown_requested_{false};
 };
 

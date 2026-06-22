@@ -4,6 +4,7 @@
 #include <string>
 
 #include "app/ecat_application.h"
+#include "app/stdin_command_reader.h"
 #include "ec_master/ec_master.h"
 #include "utils/logger.h"
 
@@ -40,7 +41,8 @@ int main(int argc, char *argv[])
 	config.cycle_time_us = 1000;
 	config.use_dc = true;
 
-	auto app = std::make_unique<mo_ecat::EcatApplication>();
+	auto app = std::make_unique<mo_ecat::EcatApplication>(
+		std::make_unique<mo_ecat::StdinCommandReader>());
 	if (!app->Initialize(config)) {
 		LOG_ERROR << "Failed to initialize application";
 		return 1;
