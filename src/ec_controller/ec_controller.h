@@ -1,12 +1,12 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "activity/activity.h"
 #include "ec_master/ec_master.h"
 #include "slave_node/slave_node_manager.h"
 
@@ -50,23 +50,23 @@ class EcatController
 	// 安全停止：根据当前状态回滚，最终回到 INIT 并清理资源
 	void Stop();
 
-	// 周期任务：执行一次 PDO 收发（PDO 阶段由周期线程调用）
-	void RunOneCycle();
+	// 请求进入错误状态。供 ActivityScheduler / ProcessDataEngine 等调度/监控类调用。
+	void RequestErrorState(const std::string &reason);
 
-	// 状态监控：Maintenance/Operational 阶段检测到掉线则进入 kError
-	void CheckSlaveStates();
+	// 安全遍历所有 SlaveNode，不暴露 SlaveNodeManager 本身。
+	// EcatApplication 应使用此接口，而不是 GetSlaveNodeManager()。
+	void ForEachSlaveNode(const std::function<void(SlaveNode &)> &callback);
 
-	// 获取节点管理器，供上层按名字/索引访问从站
+	// 获取节点管理器，仅供 ProcessDataEngine 等底层周期模块使用。
+	// EcatApplication 禁止直接调用。
 	SlaveNodeManager &GetSlaveNodeManager();
+
+	// 获取 EcMaster，仅供 ProcessDataEngine 等底层周期模块使用。
+	// EcatApplication 禁止直接调用。
+	EcMaster &GetEcMaster();
 
 	// 获取扫描到的从站数量（Scanned/Maintenance 等状态有效）
 	size_t GetSlaveCount() const;
-
-	// 执行同步维护活动（第一阶段采用同步模型，后续可扩展异步）
-	bool ExecuteActivity(std::unique_ptr<EcatActivity> activity);
-
-	// 查询是否有活动正在执行
-	bool IsActivityRunning() const;
 
 	ControllerState GetState() const;
 	bool IsInitialized() const;
@@ -105,9 +105,6 @@ class EcatController
 	// 安全停止：根据当前状态逐级回滚，最终关闭 SOEM 并清理资源。
 	bool DoShutdown();
 
-	// 进入 kError 并记录原因。
-	void EnterErrorState(const std::string &reason);
-
 	// 从 EcMaster 刷新所有从站信息。
 	std::vector<SlaveInfo> RefreshSlaveInfos() const;
 
@@ -117,8 +114,6 @@ class EcatController
 
 	EcMasterConfig config_;
 	std::vector<SlaveInfo> slave_infos_;
-
-	std::atomic<bool> activity_running_{false};
 };
 
 } // namespace mo_ecat

@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "activity/activity_scheduler.h"
 #include "app/command_reader.h"
+#include "cyclic/process_data_engine.h"
 #include "ec_controller/ec_controller.h"
 
 namespace mo_ecat
@@ -17,7 +19,9 @@ namespace mo_ecat
 class EcatApplication
 {
 public:
-	explicit EcatApplication(std::unique_ptr<CommandReader> command_reader);
+	EcatApplication(std::unique_ptr<CommandReader> command_reader,
+			EcatController &controller, ActivityScheduler &scheduler,
+			ProcessDataEngine &engine);
 	~EcatApplication();
 
 	// 初始化网卡/SOEM，到达 AdapterReady
@@ -27,7 +31,7 @@ public:
 	void Shutdown();
 
 	// 单步执行一次状态机迭代。
-	// 非阻塞读取命令，根据当前 ControllerState 执行对应状态和周期任务。
+	// 非阻塞读取命令，根据当前 ControllerState 执行对应逻辑和周期任务。
 	// 返回 true：继续运行；返回 false：收到退出请求（exit/quit/EOF）。
 	bool Run();
 
@@ -50,8 +54,10 @@ private:
 	void ExecuteActivityForAllNodes(
 		const std::function<std::unique_ptr<EcatActivity>(SlaveNode &)> &factory);
 
-	EcatController controller_;
 	std::unique_ptr<CommandReader> command_reader_;
+	EcatController &controller_;
+	ActivityScheduler &scheduler_;
+	ProcessDataEngine &engine_;
 };
 
 } // namespace mo_ecat

@@ -14,6 +14,7 @@ include_directories(
 )
 
 set(ECAT_SOURCES
+    src/activity/activity_scheduler.cpp
     src/activity/sdo_diagnostics_activity.cpp
     src/activity/sdo_parameter_activity.cpp
     src/activity/state_inspection_activity.cpp
@@ -22,6 +23,7 @@ set(ECAT_SOURCES
     src/ec_master/ec_master.cpp
     src/ec_controller/ec_controller.cpp
     src/cyclic/cyclic_runner.cpp
+    src/cyclic/process_data_engine.cpp
     src/servo_axis/servo_axis.cpp
     src/slave_node/device_profile.cpp
     src/slave_node/slave_config_factory.cpp

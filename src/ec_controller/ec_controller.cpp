@@ -220,56 +220,6 @@ bool EcatController::TransitionTo(ControllerState target)
 	return DoStepTo(target);
 }
 
-bool EcatController::ExecuteActivity(std::unique_ptr<EcatActivity> activity)
-{
-	if (!activity) {
-		LOG_ERROR << "Null activity";
-		return false;
-	}
-
-	if (activity_running_.load()) {
-		LOG_ERROR << "Activity already running";
-		return false;
-	}
-
-	if (!activity->CanStart(state_)) {
-		LOG_ERROR << "Activity " << activity->GetName()
-			  << " cannot start in state " << StateToString(state_);
-		return false;
-	}
-
-	activity_running_.store(true);
-	LOG_INFO << "Activity started: " << activity->GetName();
-
-	const bool ok = activity->Execute();
-
-	LOG_INFO << "Activity finished: " << activity->GetName()
-		 << ", result=" << (ok ? "ok" : "failed");
-	activity_running_.store(false);
-
-	if (!ok) {
-		switch (activity->GetFailurePolicy()) {
-		case ActivityFailurePolicy::kEnterError:
-			EnterErrorState(std::string("Activity failed: ") + activity->GetName());
-			break;
-		case ActivityFailurePolicy::kShutdown:
-			Stop();
-			break;
-		case ActivityFailurePolicy::kKeepControllerState:
-		default:
-			LOG_WARN << "Activity failed but keeping controller state";
-			break;
-		}
-	}
-
-	return ok;
-}
-
-bool EcatController::IsActivityRunning() const
-{
-	return activity_running_.load();
-}
-
 bool EcatController::DoStepTo(ControllerState next)
 {
 	switch (next) {
@@ -291,7 +241,7 @@ bool EcatController::DoStepTo(ControllerState next)
 
 // Maintenance -> Operational 复合转换。
 // 依次执行 PDO 配置、SafeOp、DC 配置、Operational。
-// 任一失败进入 kError，state_ 仍保持 kMaintenance（由 EnterErrorState 改为 kError）。
+// 任一失败调用 RequestErrorState()，state_ 变为 kError。
 bool EcatController::DoStartOperation()
 {
 	if (state_ != ControllerState::kMaintenance) {
@@ -399,7 +349,7 @@ bool EcatController::DoPdoConfigure()
 	}
 
 	if (!node_manager_.ConfigureAll()) {
-		EnterErrorState("Failed to configure slave nodes");
+		RequestErrorState("Failed to configure slave nodes");
 		return false;
 	}
 
@@ -415,12 +365,12 @@ bool EcatController::DoSafeOp()
 	}
 
 	if (!master_.ConfigureProcessData()) {
-		EnterErrorState("Failed to configure process data");
+		RequestErrorState("Failed to configure process data");
 		return false;
 	}
 
 	if (!master_.RequestSafeOpState() || !master_.CheckAllSlavesInState(EC_STATE_SAFE_OP)) {
-		EnterErrorState("Failed to enter SAFEOP");
+		RequestErrorState("Failed to enter SAFEOP");
 		return false;
 	}
 
@@ -436,7 +386,7 @@ bool EcatController::DoDcConfigure()
 	}
 
 	if (!master_.ConfigureDc()) {
-		EnterErrorState("Failed to configure DC");
+		RequestErrorState("Failed to configure DC");
 		return false;
 	}
 
@@ -453,7 +403,7 @@ bool EcatController::DoOperational()
 
 	if (!master_.RequestOperationalState() ||
 	    !master_.CheckAllSlavesInState(EC_STATE_OPERATIONAL)) {
-		EnterErrorState("Failed to enter OPERATIONAL");
+		RequestErrorState("Failed to enter OPERATIONAL");
 		return false;
 	}
 
@@ -495,7 +445,7 @@ bool EcatController::DoShutdown()
 	return true;
 }
 
-void EcatController::EnterErrorState(const std::string &reason)
+void EcatController::RequestErrorState(const std::string &reason)
 {
 	LOG_ERROR << "Entering error state: " << reason;
 	state_ = ControllerState::kError;
@@ -573,46 +523,24 @@ void EcatController::Stop()
 	TransitionTo(ControllerState::kUninitialized);
 }
 
-// PDO 周期任务：更新输出 -> 收发 PDO -> 更新输入。
-// 仅在 kOperational 状态下执行。
-void EcatController::RunOneCycle()
+void EcatController::ForEachSlaveNode(const std::function<void(SlaveNode &)> &callback)
 {
-	if (state_ != ControllerState::kOperational) {
-		LOG_WARN << "RunOneCycle ignored: not operational";
-		return;
-	}
-
-	node_manager_.UpdateAllOutputs();
-	master_.RunOneCycle();
-	node_manager_.UpdateAllInputs();
-}
-
-// 状态监控：检测从站实际状态是否低于期望状态。
-// 仅在 kMaintenance（期望 PREOP）和 kOperational（期望 OP）下检查。
-// 发现异常时进入 kError。
-void EcatController::CheckSlaveStates()
-{
-	master_.CheckSlaveStates();
-
-	switch (state_) {
-	case ControllerState::kMaintenance:
-		if (!master_.CheckAllSlavesInState(EC_STATE_PRE_OP)) {
-			EnterErrorState("Slave dropped out of PREOP");
+	for (size_t i = 0; i < node_manager_.GetNodeCount(); ++i) {
+		SlaveNode *node = node_manager_.GetNode(i);
+		if (node != nullptr) {
+			callback(*node);
 		}
-		break;
-	case ControllerState::kOperational:
-		if (!master_.CheckAllSlavesInState(EC_STATE_OPERATIONAL)) {
-			EnterErrorState("Slave dropped out of OPERATIONAL");
-		}
-		break;
-	default:
-		break;
 	}
 }
 
 SlaveNodeManager &EcatController::GetSlaveNodeManager()
 {
 	return node_manager_;
+}
+
+EcMaster &EcatController::GetEcMaster()
+{
+	return master_;
 }
 
 size_t EcatController::GetSlaveCount() const

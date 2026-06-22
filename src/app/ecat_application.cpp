@@ -14,8 +14,14 @@
 namespace mo_ecat
 {
 
-EcatApplication::EcatApplication(std::unique_ptr<CommandReader> command_reader)
-	: command_reader_(std::move(command_reader))
+EcatApplication::EcatApplication(std::unique_ptr<CommandReader> command_reader,
+					 EcatController &controller,
+					 ActivityScheduler &scheduler,
+					 ProcessDataEngine &engine)
+	: command_reader_(std::move(command_reader)),
+	  controller_(controller),
+	  scheduler_(scheduler),
+	  engine_(engine)
 {
 }
 
@@ -134,7 +140,7 @@ void EcatApplication::HandleScannedState(const std::string *command)
 void EcatApplication::HandleMaintenanceState(const std::string *command)
 {
 	// 周期性任务：检查从站状态
-	controller_.CheckSlaveStates();
+	engine_.CheckSlaveStates();
 
 	if (command == nullptr) {
 		return;
@@ -173,8 +179,8 @@ void EcatApplication::HandleMaintenanceState(const std::string *command)
 void EcatApplication::HandleOperationalState(const std::string *command)
 {
 	// 周期性 PDO 周期 + 状态检查
-	controller_.RunOneCycle();
-	controller_.CheckSlaveStates();
+	engine_.RunOnce();
+	engine_.CheckSlaveStates();
 
 	if (command != nullptr && *command == "stop") {
 		LOG_INFO << "Command: stop";
@@ -217,15 +223,10 @@ void EcatApplication::OnParam(const std::vector<std::string> &args)
 	LOG_INFO << "Writing parameter 0x" << std::hex << index << ":"
 		 << static_cast<int>(subindex) << " = 0x" << value << std::dec;
 
-	auto &node_manager = controller_.GetSlaveNodeManager();
-	for (size_t i = 0; i < node_manager.GetNodeCount(); ++i) {
-		SlaveNode *node = node_manager.GetNode(i);
-		if (node != nullptr) {
-			controller_.ExecuteActivity(
-				std::make_unique<SdoParameterActivity>(*node, index, subindex,
-								       value));
-		}
-	}
+	controller_.ForEachSlaveNode([this, index, subindex, value](SlaveNode &node) {
+		scheduler_.Execute(
+			std::make_unique<SdoParameterActivity>(node, index, subindex, value));
+	});
 }
 
 // 对所有从站执行状态巡检 Activity。
@@ -254,13 +255,9 @@ void EcatApplication::OnHelp()
 void EcatApplication::ExecuteActivityForAllNodes(
 	const std::function<std::unique_ptr<EcatActivity>(SlaveNode &)> &factory)
 {
-	auto &node_manager = controller_.GetSlaveNodeManager();
-	for (size_t i = 0; i < node_manager.GetNodeCount(); ++i) {
-		SlaveNode *node = node_manager.GetNode(i);
-		if (node != nullptr) {
-			controller_.ExecuteActivity(factory(*node));
-		}
-	}
+	controller_.ForEachSlaveNode([this, &factory](SlaveNode &node) {
+		scheduler_.Execute(factory(node));
+	});
 }
 
 } // namespace mo_ecat

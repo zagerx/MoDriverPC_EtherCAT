@@ -6,8 +6,10 @@
 #include <string>
 #include <thread>
 
+#include "activity/activity_scheduler.h"
 #include "app/ecat_application.h"
 #include "app/stdin_command_reader.h"
+#include "cyclic/process_data_engine.h"
 #include "ec_master/ec_master.h"
 #include "utils/logger.h"
 
@@ -42,8 +44,18 @@ int main(int argc, char *argv[])
 	config.cycle_time_us = 1000;
 	config.use_dc = true;
 
+	// 核心对象：
+	// Controller 只做状态迁移；
+	// Scheduler 负责 Activity 调度；
+	// Engine 负责 PDO 周期和状态监控。
+	mo_ecat::EcatController controller;
+	mo_ecat::ActivityScheduler scheduler(controller);
+	mo_ecat::ProcessDataEngine engine(controller, controller.GetEcMaster(),
+					 controller.GetSlaveNodeManager());
+
 	auto app = std::make_unique<mo_ecat::EcatApplication>(
-		std::make_unique<mo_ecat::StdinCommandReader>());
+		std::make_unique<mo_ecat::StdinCommandReader>(), controller, scheduler,
+		engine);
 	if (!app->Initialize(config)) {
 		LOG_ERROR << "Failed to initialize application";
 		return 1;
