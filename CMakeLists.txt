@@ -15,6 +15,7 @@ include_directories(
 
 set(ECAT_SOURCES
     src/activity/activity_scheduler.cpp
+    src/activity/pdo_mapping_activity.cpp
     src/activity/sdo_diagnostics_activity.cpp
     src/activity/sdo_parameter_activity.cpp
     src/activity/state_inspection_activity.cpp

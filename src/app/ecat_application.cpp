@@ -5,6 +5,7 @@
 #include <sstream>
 #include <stdexcept>
 
+#include "activity/pdo_mapping_activity.h"
 #include "activity/sdo_diagnostics_activity.h"
 #include "activity/sdo_parameter_activity.h"
 #include "activity/state_inspection_activity.h"
@@ -173,6 +174,15 @@ void EcatApplication::HandleMaintenanceState(const std::string *command)
 	} else if (*command == "inspect") {
 		LOG_INFO << "Command: inspect";
 		OnInspect();
+	} else if (command->rfind("pdo", 0) == 0) {
+		LOG_INFO << "Command: pdo";
+		std::istringstream iss(*command);
+		std::string token;
+		std::vector<std::string> args;
+		while (iss >> token) {
+			args.push_back(token);
+		}
+		OnPdo(args);
 	} else if (*command == "start") {
 		LOG_INFO << "Command: start";
 		if (!controller_.StartOperation()) {
@@ -281,6 +291,44 @@ void EcatApplication::OnInspect()
 	});
 }
 
+// 读取并打印 PDO 映射：pdo [slave_id]，省略 slave_id 则对所有从站执行。
+void EcatApplication::OnPdo(const std::vector<std::string> &args)
+{
+	if (args.size() == 1) {
+		LOG_INFO << "Reading PDO mapping for all slaves...";
+		ExecuteActivityForAllNodes([](SlaveNode &node) {
+			return std::make_unique<PdoMappingActivity>(node);
+		});
+		return;
+	}
+
+	if (args.size() != 2) {
+		LOG_ERROR << "Usage: pdo [slave_id]";
+		return;
+	}
+
+	int target_id = 0;
+	try {
+		target_id = std::stoi(args[1]);
+	} catch (const std::exception &e) {
+		LOG_ERROR << "Invalid slave_id: " << args[1]
+			  << "\nUsage: pdo [slave_id]";
+		return;
+	}
+
+	bool found = false;
+	controller_.ForEachSlaveNode([this, target_id, &found](SlaveNode &node) {
+		if (static_cast<int>(node.GetInfo().slave_id) == target_id) {
+			scheduler_.Execute(std::make_unique<PdoMappingActivity>(node));
+			found = true;
+		}
+	});
+
+	if (!found) {
+		LOG_ERROR << "Slave " << target_id << " not found";
+	}
+}
+
 void EcatApplication::OnLogLevel(const std::vector<std::string> &args)
 {
 	if (args.size() != 2) {
@@ -315,6 +363,7 @@ void EcatApplication::OnHelp()
 		 << "  [Maintenance]  diagnose               - Run SDO diagnostics\n"
 		 << "  [Maintenance]  param <idx> <sub> <val> - Write a parameter\n"
 		 << "  [Maintenance]  inspect                - Inspect slave states\n"
+		 << "  [Maintenance]  pdo [slave_id]         - Show PDO mapping (all or single slave)\n"
 		 << "  [Maintenance]  start                  - Enter OPERATIONAL\n"
 		 << "  [Any]          loglevel <level>       - Set log level (debug/info/warn/error)\n"
 		 << "  [Any]          stop                   - Stop controller\n"

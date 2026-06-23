@@ -48,6 +48,7 @@ private:
 	void OnDiagnose();
 	void OnParam(const std::vector<std::string> &args);
 	void OnInspect();
+	void OnPdo(const std::vector<std::string> &args);
 	void OnLogLevel(const std::vector<std::string> &args);
 	void OnHelp();
 
