@@ -5,30 +5,12 @@
 #include <string>
 #include <vector>
 
+#include "mo_ecat/config.h"
+#include "mo_ecat/types.h"
 #include "soem/soem.h"
 
 namespace mo_ecat
 {
-
-// 从站身份配置，用于扫描后拓扑校验。
-struct SlaveIdentity {
-	uint32_t vendor_id = 0;
-	uint32_t product_id = 0;
-	uint32_t revision_id = 0;
-	std::string name;
-};
-
-struct EcMasterConfig {
-	std::string ifname = "eth0";
-	int cycle_time_us = 1000;
-	bool use_dc = true;
-
-	// 预期从站数量；0 表示不校验数量。
-	int expected_slave_count = 0;
-
-	// 预期从站身份列表（按扫描位置顺序）。为空表示不校验身份。
-	std::vector<SlaveIdentity> expected_identities;
-};
 
 struct CyclicStats {
 	uint32_t cycle_count = 0;
@@ -40,34 +22,6 @@ struct CyclicStats {
 	int64_t last_dc_time = 0;
 };
 
-// 从站静态信息（由 ecx_config_init 扫描后填充）
-struct SlaveInfo {
-	int slave_id = 0;
-	uint16_t config_address = 0;
-	uint16_t alias_address = 0;
-
-	uint32_t vendor_id = 0;
-	uint32_t product_id = 0;
-	uint32_t revision_id = 0;
-	uint32_t serial_id = 0;
-
-	std::string name;
-	bool supports_dc = false;
-
-	// Mailbox 基本信息（从 SII/EEPROM 读取）
-	uint16_t mbx_l = 0;     // 邮箱长度（字节），0 表示无邮箱
-	uint16_t mbx_wo = 0;    // 邮箱写偏移
-	uint16_t mbx_ro = 0;    // 邮箱读偏移
-	uint16_t mbx_proto = 0; // 支持的邮箱协议位掩码
-	uint8_t mbx_cnt = 0;    // 邮箱链路层计数器
-
-	// 运行状态与能力（扫描时或 PDO/DC 配置后可用）
-	uint16_t state = 0;          // 当前 EtherCAT 状态
-	uint16_t al_status_code = 0; // AL 状态码
-	uint8_t coe_details = 0;     // CoE 能力位
-	uint32_t output_bytes = 0;   // 输出字节数（PDO 映射后有效）
-	uint32_t input_bytes = 0;    // 输入字节数（PDO 映射后有效）
-};
 
 class EcMaster
 {
