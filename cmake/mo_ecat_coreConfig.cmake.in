@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/mo_ecat_coreTargets.cmake")
+
+check_required_components(mo_ecat_core)

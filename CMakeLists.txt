@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MoDriverPC_EtherCAT LANGUAGES C CXX)
+project(mo_ecat_core VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -8,7 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(third_party/SOEM)
 
-option(MO_ECAT_BUILD_CLI "Build transitional CLI example" ON)
 option(MO_ECAT_BUILD_TESTS "Build tests" OFF)
 
 set(MO_ECAT_CORE_SOURCES
@@ -53,22 +52,50 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
-if(MO_ECAT_BUILD_CLI)
-    add_executable(ecat_cli
-        examples/cli/main.cpp
-        examples/cli/ecat_application.cpp
-        examples/cli/stdin_command_reader.cpp
-    )
+# Install / export rules
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-    target_link_libraries(ecat_cli PRIVATE mo_ecat_core)
+install(TARGETS mo_ecat_core soem
+    EXPORT mo_ecat_coreTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(ecat_cli PRIVATE
-            -Wall
-            -Wextra
-        )
-    endif()
-endif()
+install(EXPORT mo_ecat_coreTargets
+    FILE mo_ecat_coreTargets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mo_ecat_core
+)
+
+install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/mo_ecat_coreConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/mo_ecat_coreConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mo_ecat_core
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/mo_ecat_coreConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/mo_ecat_coreConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/mo_ecat_coreConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mo_ecat_core
+)
+
+# Build-tree package config, so examples/cli can use find_package without install.
+export(EXPORT mo_ecat_coreTargets
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/mo_ecat_coreTargets.cmake
+)
+
 
 if(MO_ECAT_BUILD_TESTS)
     add_subdirectory(tests)
