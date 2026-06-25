@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "command_reader.h"
 #include "mo_ecat/master.h"
@@ -32,6 +33,10 @@ private:
 	void HandleOperationalState(const std::string *command);
 	void HandleErrorState(const std::string *command);
 
+	void OnDiagnose();
+	void OnParam(const std::vector<std::string> &args);
+	void OnInspect();
+	void OnPdo(const std::vector<std::string> &args);
 	void OnLogLevel(const std::vector<std::string> &args);
 	void OnHelp();
 

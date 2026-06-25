@@ -17,8 +17,7 @@ Logger &Logger::GetInstance()
 
 Logger::Logger()
 {
-    // 默认输出到 logger/ecat.log，目录不存在则自动创建。
-    SetLogFile("logger/ecat.log");
+    // 默认不输出到文件，sink 由 EcMasterConfig 或上层显式配置。
     worker_thread_ = std::thread(&Logger::WorkerLoop, this);
 }
 
@@ -57,6 +56,16 @@ void Logger::SetLogLevel(LogLevel level)
     std::lock_guard<std::mutex> lock(sink_mutex_);
     console_level_ = level;
     file_level_ = level;
+}
+
+void Logger::SetCallbackSink(LogLevel level,
+                             std::function<void(LogLevel, const char *, int,
+                                                const std::string &)> callback)
+{
+    std::lock_guard<std::mutex> lock(sink_mutex_);
+    callback_level_ = level;
+    callback_sink_ = std::move(callback);
+    has_callback_ = static_cast<bool>(callback_sink_);
 }
 
 void Logger::SetLogFile(const std::string &path)
@@ -154,18 +163,23 @@ void Logger::WriteToSinks(const LogRecord &record)
     if (has_file_ && static_cast<int>(record.level) >= static_cast<int>(file_level_)) {
         file_stream_ << formatted;
     }
+    if (has_callback_ && static_cast<int>(record.level) >= static_cast<int>(callback_level_)) {
+        callback_sink_(record.level, record.file, record.line, record.message);
+    }
 }
 
 void Logger::Log(LogLevel level, const char *file, int line, std::string message)
 {
     bool log_console = false;
     bool log_file = false;
+    bool log_callback = false;
     {
         std::lock_guard<std::mutex> lock(sink_mutex_);
         log_console = static_cast<int>(level) >= static_cast<int>(console_level_);
         log_file = has_file_ && static_cast<int>(level) >= static_cast<int>(file_level_);
+        log_callback = has_callback_ && static_cast<int>(level) >= static_cast<int>(callback_level_);
     }
-    if (!log_console && !log_file) {
+    if (!log_console && !log_file && !log_callback) {
         return;
     }
 

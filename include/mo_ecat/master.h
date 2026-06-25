@@ -45,7 +45,18 @@ public:
 	std::vector<SlaveInfo> GetSlaveInfos();
 	MasterSnapshot GetSnapshot();
 
-	// 回调接口（由核心库内部线程调用，调用方不应阻塞）
+	// SDO 诊断接口
+	bool ReadSdo(int slave_id, uint16_t index, uint8_t subindex,
+		     std::vector<uint8_t> &data, int timeout_ms = 1000);
+	bool WriteSdo(int slave_id, uint16_t index, uint8_t subindex,
+		      const std::vector<uint8_t> &data, int timeout_ms = 1000);
+
+	// 读取并格式化指定从站的 PDO 映射，用于调试显示。
+	std::string DumpPdoMapping(int slave_id);
+
+	// 回调接口（由核心库内部线程调用，调用方不应阻塞）。
+	// 为避免数据竞争，建议在 InitializeAdapter() 之前设置；若运行中需要替换，
+	// 调用方需自行保证与 Service() / 回调触发线程的同步。
 	std::function<void(MasterState old_state, MasterState new_state)> on_state_changed;
 	std::function<void(const std::string &reason)> on_fault;
 	std::function<void(const std::string &level, const std::string &source,

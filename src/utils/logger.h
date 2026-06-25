@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <sstream>
@@ -36,6 +37,12 @@ public:
     // 设置日志文件路径，空字符串表示不输出到文件。
     // 会自动创建父目录。
     void SetLogFile(const std::string &path);
+
+    // 设置回调 sink，空 function 表示禁用回调。
+    // 回调在 Logger 后台线程中执行，调用方不应阻塞。
+    void SetCallbackSink(LogLevel level,
+                         std::function<void(LogLevel, const char *, int,
+                                            const std::string &)> callback);
 
     // message 按值传入，内部会 move 进队列，避免额外拷贝。
     void Log(LogLevel level, const char *file, int line, std::string message);
@@ -73,6 +80,10 @@ private:
     LogLevel console_level_ = LogLevel::Info;
     LogLevel file_level_ = LogLevel::Debug;
     bool has_file_ = false;
+
+    LogLevel callback_level_ = LogLevel::Debug;
+    std::function<void(LogLevel, const char *, int, const std::string &)> callback_sink_;
+    bool has_callback_ = false;
 
     std::thread worker_thread_;
 };
