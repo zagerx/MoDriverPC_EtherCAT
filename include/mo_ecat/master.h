@@ -41,6 +41,7 @@ public:
 
 	// 查询
 	MasterState GetState() const;
+	MasterRuntimeState GetRuntimeState() const;
 	std::size_t GetSlaveCount() const;
 	std::vector<SlaveInfo> GetSlaveInfos();
 	MasterSnapshot GetSnapshot();

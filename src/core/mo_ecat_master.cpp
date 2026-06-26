@@ -39,6 +39,34 @@ MasterState ToMasterState(ControllerState state)
 	return MasterState::kUninitialized;
 }
 
+MasterRuntimeState ToMasterRuntimeState(ControllerState state)
+{
+	switch (state) {
+	case ControllerState::kUninitialized:
+		return { MasterMode::kInit, TransitionStage::kStable, PrepareStage::kNone };
+	case ControllerState::kAdapterReady:
+		return { MasterMode::kPrepare, TransitionStage::kStable,
+			 PrepareStage::kAdapterReady };
+	case ControllerState::kScanned:
+		return { MasterMode::kPrepare, TransitionStage::kStable,
+			 PrepareStage::kTopologyDiscovered };
+	case ControllerState::kMaintenance:
+		return { MasterMode::kPrepare, TransitionStage::kStable,
+			 PrepareStage::kPreOpMaintenance };
+	case ControllerState::kReadyToRun:
+		return { MasterMode::kPrepare, TransitionStage::kStable,
+			 PrepareStage::kSafeOpReady };
+	case ControllerState::kOperational:
+		return { MasterMode::kRun, TransitionStage::kStable, PrepareStage::kNone };
+	case ControllerState::kFault:
+		return { MasterMode::kFault, TransitionStage::kStable, PrepareStage::kNone };
+	case ControllerState::kEmergencyStop:
+		return { MasterMode::kEmergencyStop, TransitionStage::kStable,
+			 PrepareStage::kNone };
+	}
+	return { MasterMode::kInit, TransitionStage::kStable, PrepareStage::kNone };
+}
+
 const char *LevelToString(LogLevel level)
 {
 	switch (level) {
@@ -77,6 +105,7 @@ public:
 	void Service();
 
 	MasterState GetState() const;
+	MasterRuntimeState GetRuntimeState() const;
 	std::size_t GetSlaveCount() const;
 	std::vector<SlaveInfo> GetSlaveInfos();
 	MasterSnapshot GetSnapshot();
@@ -239,6 +268,11 @@ MasterState MoEcatMaster::Impl::GetState() const
 	return ToMasterState(controller_.GetState());
 }
 
+MasterRuntimeState MoEcatMaster::Impl::GetRuntimeState() const
+{
+	return ToMasterRuntimeState(controller_.GetState());
+}
+
 std::size_t MoEcatMaster::Impl::GetSlaveCount() const
 {
 	return controller_.GetSlaveCount();
@@ -259,6 +293,7 @@ MasterSnapshot MoEcatMaster::Impl::GetSnapshot()
 {
 	MasterSnapshot snapshot;
 	snapshot.state = GetState();
+	snapshot.runtime_state = GetRuntimeState();
 	snapshot.slaves = GetSlaveInfos();
 	return snapshot;
 }
@@ -434,6 +469,11 @@ void MoEcatMaster::Service()
 MasterState MoEcatMaster::GetState() const
 {
 	return impl_->GetState();
+}
+
+MasterRuntimeState MoEcatMaster::GetRuntimeState() const
+{
+	return impl_->GetRuntimeState();
 }
 
 std::size_t MoEcatMaster::GetSlaveCount() const

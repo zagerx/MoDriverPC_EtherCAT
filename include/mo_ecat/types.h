@@ -20,6 +20,37 @@ enum class MasterState {
 	kEmergencyStop,
 };
 
+// 主站运行时主状态。用于替代旧扁平状态在 UI/调度层直接暴露。
+enum class MasterMode {
+	kInit,
+	kPrepare,
+	kRun,
+	kFault,
+	kEmergencyStop,
+};
+
+// 状态迁移阶段。当前版本先以稳定态映射旧状态，后续再接入进入/退出过程。
+enum class TransitionStage {
+	kEntering,
+	kStable,
+	kExiting,
+};
+
+// 准备态内部阶段，仅在 MasterMode::kPrepare 下有实际含义。
+enum class PrepareStage {
+	kNone,
+	kAdapterReady,
+	kTopologyDiscovered,
+	kPreOpMaintenance,
+	kSafeOpReady,
+};
+
+struct MasterRuntimeState {
+	MasterMode mode = MasterMode::kInit;
+	TransitionStage transition = TransitionStage::kStable;
+	PrepareStage prepare_stage = PrepareStage::kNone;
+};
+
 // 从站身份标识，用于扫描后身份/拓扑校验。
 struct SlaveIdentity {
 	uint32_t vendor_id = 0;
@@ -72,6 +103,7 @@ struct SlaveFeedback {
 // 主站快照，用于 GUI/CLI 一次性获取当前状态。
 struct MasterSnapshot {
 	MasterState state = MasterState::kUninitialized;
+	MasterRuntimeState runtime_state;
 	std::vector<SlaveInfo> slaves;
 	std::string last_fault;
 };
