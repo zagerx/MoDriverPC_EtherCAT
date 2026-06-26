@@ -324,6 +324,11 @@ MasterRuntimeState MoEcatMaster::Impl::GetRuntimeState() const
 
 void MoEcatMaster::Impl::BeginRuntimeTransition(MasterRuntimeState state)
 {
+	if (!IsValidRuntimeState(state)) {
+		LOG_ERROR << "Invalid runtime state requested: " << ToDisplayString(state)
+			  << ", fallback to fault";
+		state = { MasterMode::kFault, TransitionStage::kEntering, PrepareStage::kNone };
+	}
 	runtime_state_override_ = state;
 	NotifyRuntimeStateChanged();
 }
@@ -344,9 +349,16 @@ void MoEcatMaster::Impl::NotifyRuntimeStateChanged() const
 MasterRuntimeState MoEcatMaster::Impl::CurrentRuntimeState() const
 {
 	if (runtime_state_override_.has_value()) {
-		return *runtime_state_override_;
+		if (IsValidRuntimeState(*runtime_state_override_)) {
+			return *runtime_state_override_;
+		}
+		return { MasterMode::kFault, TransitionStage::kStable, PrepareStage::kNone };
 	}
-	return ToMasterRuntimeState(controller_.GetState());
+	const auto state = ToMasterRuntimeState(controller_.GetState());
+	if (!IsValidRuntimeState(state)) {
+		return { MasterMode::kFault, TransitionStage::kStable, PrepareStage::kNone };
+	}
+	return state;
 }
 
 std::size_t MoEcatMaster::Impl::GetSlaveCount() const

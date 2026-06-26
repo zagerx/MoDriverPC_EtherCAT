@@ -12,6 +12,7 @@ option(MO_ECAT_BUILD_TESTS "Build tests" OFF)
 
 set(MO_ECAT_CORE_SOURCES
     src/core/mo_ecat_master.cpp
+    src/core/runtime_state.cpp
     src/activity/activity_scheduler.cpp
     src/activity/pdo_mapping_activity.cpp
     src/activity/sdo_diagnostics_activity.cpp

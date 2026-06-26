@@ -51,6 +51,9 @@ struct MasterRuntimeState {
 	PrepareStage prepare_stage = PrepareStage::kNone;
 };
 
+bool IsValidRuntimeState(const MasterRuntimeState &state);
+std::string ToDisplayString(const MasterRuntimeState &state);
+
 // 从站身份标识，用于扫描后身份/拓扑校验。
 struct SlaveIdentity {
 	uint32_t vendor_id = 0;
