@@ -59,6 +59,7 @@ public:
 	// 为避免数据竞争，建议在 InitializeAdapter() 之前设置；若运行中需要替换，
 	// 调用方需自行保证与 Service() / 回调触发线程的同步。
 	std::function<void(MasterState old_state, MasterState new_state)> on_state_changed;
+	std::function<void(MasterRuntimeState state)> on_runtime_state_changed;
 	std::function<void(const std::string &reason)> on_fault;
 	std::function<void(const std::string &level, const std::string &source,
 			   const std::string &message)>

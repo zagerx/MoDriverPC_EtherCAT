@@ -1,6 +1,7 @@
 #include "mo_ecat/master.h"
 
 #include <iomanip>
+#include <optional>
 #include <sstream>
 
 #include "activity/activity_scheduler.h"
@@ -121,6 +122,10 @@ public:
 private:
 	void ConfigureLogSink(const EcMasterConfig &config);
 	void DisableLogCallback();
+	void BeginRuntimeTransition(MasterRuntimeState state);
+	void EndRuntimeTransition();
+	void NotifyRuntimeStateChanged() const;
+	MasterRuntimeState CurrentRuntimeState() const;
 
 	bool ReadSmAssignment(uint16_t slave_id, uint16_t assign_index,
 			      std::vector<uint16_t> &pdo_indices);
@@ -130,6 +135,7 @@ private:
 	EcatController controller_;
 	ActivityScheduler scheduler_;
 	ProcessDataEngine engine_;
+	std::optional<MasterRuntimeState> runtime_state_override_;
 };
 
 MoEcatMaster::Impl::Impl()
@@ -198,47 +204,87 @@ void MoEcatMaster::Impl::DisableLogCallback()
 bool MoEcatMaster::Impl::InitializeAdapter(const EcMasterConfig &config)
 {
 	ConfigureLogSink(config);
-	return controller_.InitializeAdapter(config);
+	BeginRuntimeTransition({ MasterMode::kPrepare, TransitionStage::kEntering,
+				 PrepareStage::kAdapterReady });
+	const bool ok = controller_.InitializeAdapter(config);
+	EndRuntimeTransition();
+	return ok;
 }
 
 bool MoEcatMaster::Impl::Scan()
 {
-	return controller_.Scan();
+	BeginRuntimeTransition({ MasterMode::kPrepare, TransitionStage::kEntering,
+				 PrepareStage::kTopologyDiscovered });
+	const bool ok = controller_.Scan();
+	EndRuntimeTransition();
+	return ok;
 }
 
 bool MoEcatMaster::Impl::EnterMaintenance()
 {
-	return controller_.EnterMaintenance();
+	BeginRuntimeTransition({ MasterMode::kPrepare, TransitionStage::kEntering,
+				 PrepareStage::kPreOpMaintenance });
+	const bool ok = controller_.EnterMaintenance();
+	EndRuntimeTransition();
+	return ok;
 }
 
 bool MoEcatMaster::Impl::PrepareRun()
 {
-	return controller_.PrepareRun();
+	BeginRuntimeTransition({ MasterMode::kPrepare, TransitionStage::kEntering,
+				 PrepareStage::kSafeOpReady });
+	const bool ok = controller_.PrepareRun();
+	EndRuntimeTransition();
+	return ok;
 }
 
 bool MoEcatMaster::Impl::StartOperation()
 {
-	return controller_.StartOperation();
+	BeginRuntimeTransition({ MasterMode::kRun, TransitionStage::kEntering,
+				 PrepareStage::kNone });
+	const bool ok = controller_.StartOperation();
+	EndRuntimeTransition();
+	return ok;
 }
 
 bool MoEcatMaster::Impl::BackToMaintenance()
 {
-	return controller_.BackToMaintenance();
+	const auto current_state = CurrentRuntimeState();
+	if (current_state.mode == MasterMode::kRun) {
+		BeginRuntimeTransition({ MasterMode::kRun, TransitionStage::kExiting,
+					 PrepareStage::kNone });
+	} else {
+		BeginRuntimeTransition({ MasterMode::kPrepare, TransitionStage::kEntering,
+					 PrepareStage::kPreOpMaintenance });
+	}
+	const bool ok = controller_.BackToMaintenance();
+	EndRuntimeTransition();
+	return ok;
 }
 
 void MoEcatMaster::Impl::Stop()
 {
+	auto state = CurrentRuntimeState();
+	state.transition = TransitionStage::kExiting;
+	BeginRuntimeTransition(state);
 	controller_.Stop();
+	EndRuntimeTransition();
 }
 
 void MoEcatMaster::Impl::RequestFault(const std::string &reason)
 {
+	BeginRuntimeTransition({ MasterMode::kFault, TransitionStage::kEntering,
+				 PrepareStage::kNone });
 	controller_.RequestFault(reason);
+	EndRuntimeTransition();
 }
 
 void MoEcatMaster::Impl::RequestEmergencyStop(const std::string &reason)
 {
+	BeginRuntimeTransition({ MasterMode::kEmergencyStop, TransitionStage::kEntering,
+				 PrepareStage::kNone });
 	controller_.RequestEmergencyStop(reason);
+	EndRuntimeTransition();
 }
 
 void MoEcatMaster::Impl::Service()
@@ -261,6 +307,9 @@ void MoEcatMaster::Impl::Service()
 	if (old_state != new_state && master_ != nullptr && master_->on_state_changed) {
 		master_->on_state_changed(old_state, new_state);
 	}
+	if (old_state != new_state) {
+		NotifyRuntimeStateChanged();
+	}
 }
 
 MasterState MoEcatMaster::Impl::GetState() const
@@ -270,6 +319,33 @@ MasterState MoEcatMaster::Impl::GetState() const
 
 MasterRuntimeState MoEcatMaster::Impl::GetRuntimeState() const
 {
+	return CurrentRuntimeState();
+}
+
+void MoEcatMaster::Impl::BeginRuntimeTransition(MasterRuntimeState state)
+{
+	runtime_state_override_ = state;
+	NotifyRuntimeStateChanged();
+}
+
+void MoEcatMaster::Impl::EndRuntimeTransition()
+{
+	runtime_state_override_.reset();
+	NotifyRuntimeStateChanged();
+}
+
+void MoEcatMaster::Impl::NotifyRuntimeStateChanged() const
+{
+	if (master_ != nullptr && master_->on_runtime_state_changed) {
+		master_->on_runtime_state_changed(CurrentRuntimeState());
+	}
+}
+
+MasterRuntimeState MoEcatMaster::Impl::CurrentRuntimeState() const
+{
+	if (runtime_state_override_.has_value()) {
+		return *runtime_state_override_;
+	}
 	return ToMasterRuntimeState(controller_.GetState());
 }
 
